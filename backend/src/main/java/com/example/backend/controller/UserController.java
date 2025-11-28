@@ -1,0 +1,76 @@
+package com.example.backend.controller;
+
+import com.example.backend.model.User;
+import com.example.backend.service.UserService;
+
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+
+@RestController
+@RequestMapping("/api/users")
+@Validated
+public class UserController {
+private final UserService userService;
+private final PasswordEncoder passwordEncoder;
+
+
+public UserController(UserService userService, PasswordEncoder passwordEncoder) {
+this.userService = userService;
+this.passwordEncoder = passwordEncoder;
+}
+
+
+@PostMapping("/signup")
+public ResponseEntity<?> signup(@Valid @RequestBody User user) {
+Optional<User> existing = userService.findByEmail(user.getEmail());
+if (existing.isPresent()) {
+return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already registered");
+}
+user.setPassword(passwordEncoder.encode(user.getPassword()));
+user.setRole(user.getRole() == null ? "CUSTOMER" : user.getRole());
+User saved = userService.save(user);
+saved.setPassword(null);
+return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+}
+
+
+@PostMapping("/login")
+public ResponseEntity<?> login(@RequestBody User payload) {
+Optional<User> userOpt = userService.findByEmail(payload.getEmail());
+if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+User user = userOpt.get();
+if (!passwordEncoder.matches(payload.getPassword(), user.getPassword())) {
+return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+}
+user.setPassword(null);
+return ResponseEntity.ok(user);
+}
+
+
+@GetMapping
+public List<User> all() { return userService.findAll(); }
+
+
+@GetMapping("/{id}")
+public ResponseEntity<?> get(@PathVariable Long id) {
+return userService.findById(id)
+.map(u -> { u.setPassword(null); return ResponseEntity.ok(u); })
+.orElse(ResponseEntity.notFound().build());
+}
+
+
+@DeleteMapping("/{id}")
+public ResponseEntity<?> delete(@PathVariable Long id) {
+userService.delete(id);
+return ResponseEntity.noContent().build();
+}
+}
