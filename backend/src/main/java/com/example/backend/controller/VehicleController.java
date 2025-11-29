@@ -1,60 +1,78 @@
 package com.example.backend.controller;
 
-import com.example.backend.model.User;
 import com.example.backend.model.Vehicle;
-import com.example.backend.service.UserService;
 import com.example.backend.service.VehicleService;
-
-import jakarta.validation.Valid;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/vehicles")
 public class VehicleController {
-private final VehicleService vehicleService;
-private final UserService userService;
 
+    private final VehicleService service;
 
-public VehicleController(VehicleService vehicleService, UserService userService) {
-this.vehicleService = vehicleService;
-this.userService = userService;
-}
+    public VehicleController(VehicleService service) {
+        this.service = service;
+    }
 
+    // ---------------- CREATE ----------------
+    @PostMapping
+    public ResponseEntity<?> create(@RequestBody Vehicle v) {
+        // Prevent duplicates by vehicleNumber
+        if (v.getVehicleNumber() != null && !v.getVehicleNumber().isBlank()) {
+            service.findAll().stream()
+                    .filter(existing -> v.getVehicleNumber().equals(existing.getVehicleNumber()))
+                    .findAny().ifPresent(existing -> {
+                        // noop — handled below
+                    });
+            // use repository lookup for efficiency
+            if (service.getRepository() != null) {
+                // repository-based check (if available)
+                if (service.getRepository().findByVehicleNumber(v.getVehicleNumber()).isPresent()) {
+                    return ResponseEntity.status(409).body("Vehicle with this number already exists");
+                }
+            }
+        }
 
-@PostMapping
-public ResponseEntity<?> create(@Valid @RequestBody Vehicle vehicle, @RequestParam(required = false) Long userId) {
-    
-if (userId != null) {
-Optional<User> u = userService.findById(userId);
-if (u.isEmpty()) return ResponseEntity.badRequest().body("User not found");
-vehicle.setUser(u.get());
-}
-Vehicle saved = vehicleService.save(vehicle);
-return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-}
+        Vehicle saved = service.save(v);
+        return ResponseEntity.status(201).body(saved);
+    }
 
+    // ---------------- READ ALL ----------------
+    @GetMapping
+    public List<Vehicle> list() {
+        return service.findAll();
+    }
 
-@GetMapping
-public List<Vehicle> all() { return vehicleService.findAll(); }
+    // ---------------- READ ONE ----------------
+    @GetMapping("/{id}")
+    public ResponseEntity<?> get(@PathVariable Long id) {
+        return service.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
+    // ---------------- UPDATE ----------------
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Vehicle v) {
+        return service.findById(id)
+                .map(old -> {
+                    old.setVehicleNumber(v.getVehicleNumber());
+                    old.setBrand(v.getBrand());
+                    old.setModel(v.getModel());
+                    old.setYear(v.getYear());
+                    old.setVehicleType(v.getVehicleType());
+                    old.setFuelType(v.getFuelType());
+                    return ResponseEntity.ok(service.save(old));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 
-@GetMapping("/{id}")
-public ResponseEntity<?> get(@PathVariable Long id) {
-return vehicleService.findById(id)
-.map(ResponseEntity::ok)
-.orElse(ResponseEntity.notFound().build());
-}
-
-
-@DeleteMapping("/{id}")
-public ResponseEntity<?> delete(@PathVariable Long id) {
-vehicleService.delete(id);
-return ResponseEntity.noContent().build();
-}
+    // ---------------- DELETE ----------------
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
+    }
 }

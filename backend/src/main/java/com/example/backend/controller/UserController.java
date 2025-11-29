@@ -12,7 +12,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import com.example.backend.config.JwtUtil;
 
 
 @RestController
@@ -22,11 +24,13 @@ import java.util.Optional;
 public class UserController {
 private final UserService userService;
 private final PasswordEncoder passwordEncoder;
+private final JwtUtil jwtUtil;
 
 
-public UserController(UserService userService, PasswordEncoder passwordEncoder) {
-this.userService = userService;
-this.passwordEncoder = passwordEncoder;
+public UserController(UserService userService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    this.userService = userService;
+    this.passwordEncoder = passwordEncoder;
+    this.jwtUtil = jwtUtil;
 }
 
 
@@ -44,17 +48,20 @@ return ResponseEntity.status(HttpStatus.CREATED).body(saved);
 }
 
 
-@PostMapping("/login")
-public ResponseEntity<?> login(@RequestBody User payload) {
-Optional<User> userOpt = userService.findByEmail(payload.getEmail());
-if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-User user = userOpt.get();
-if (!passwordEncoder.matches(payload.getPassword(), user.getPassword())) {
-return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-}
-user.setPassword(null);
-return ResponseEntity.ok(user);
-}
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        String password = payload.get("password");
+        Optional<User> userOpt = userService.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        User user = userOpt.get();
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        }
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        user.setPassword(null);
+        return ResponseEntity.ok(Map.of("token", token, "user", user));
+    }
 
 
 @GetMapping

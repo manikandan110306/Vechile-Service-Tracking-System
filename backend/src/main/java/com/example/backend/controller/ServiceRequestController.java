@@ -32,7 +32,6 @@ public class ServiceRequestController {
         this.vehicleService = vehicleService;
     }
 
-    // --------------------- CREATE REQUEST ---------------------
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         try {
@@ -53,10 +52,18 @@ public class ServiceRequestController {
             ServiceRequest req = new ServiceRequest();
             req.setUser(u.get());
             req.setVehicle(v.get());
-            req.setServiceType(body.get("serviceType").toString());
-            req.setPreferredDate(LocalDate.parse(body.get("preferredDate").toString()));
+
+            String svcType = body.get("serviceType").toString();
+            LocalDate prefDate = LocalDate.parse(body.get("preferredDate").toString());
+            req.setServiceType(svcType);
+            req.setPreferredDate(prefDate);
             req.setStatus(body.get("status").toString());
             req.setNotes(body.get("notes").toString());
+
+            // Prevent duplicate requests (same user, vehicle, date, service type)
+            if (serviceRequestService.findDuplicate(u.get().getUserId(), v.get().getVehicleId(), prefDate, svcType).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Duplicate service request");
+            }
 
             ServiceRequest saved = serviceRequestService.save(req);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
@@ -66,13 +73,45 @@ public class ServiceRequestController {
         }
     }
 
-    // --------------------- GET ALL ---------------------
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        return serviceRequestService.findById(id).map(existing -> {
+
+            if (body.containsKey("serviceType"))
+                existing.setServiceType(body.get("serviceType").toString());
+
+            if (body.containsKey("preferredDate"))
+                existing.setPreferredDate(LocalDate.parse(body.get("preferredDate").toString()));
+
+            if (body.containsKey("status"))
+                existing.setStatus(body.get("status").toString());
+
+            if (body.containsKey("notes"))
+                existing.setNotes(body.get("notes").toString());
+
+            // Optional: update vehicle
+            if (body.containsKey("vehicleId")) {
+                Long vehicleId = Long.valueOf(body.get("vehicleId").toString());
+                vehicleService.findById(vehicleId).ifPresent(existing::setVehicle);
+            }
+
+            // Optional: update user
+            if (body.containsKey("userId")) {
+                Long userId = Long.valueOf(body.get("userId").toString());
+                userService.findById(userId).ifPresent(existing::setUser);
+            }
+
+            ServiceRequest saved = serviceRequestService.save(existing);
+            return ResponseEntity.ok(saved);
+
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping
     public List<ServiceRequest> all() {
         return serviceRequestService.findAll();
     }
 
-    // --------------------- GET BY ID ---------------------
     @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable Long id) {
         return serviceRequestService.findById(id)
@@ -80,7 +119,6 @@ public class ServiceRequestController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // --------------------- DELETE ---------------------
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         serviceRequestService.delete(id);

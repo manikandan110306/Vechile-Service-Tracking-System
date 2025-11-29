@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+// JsonIgnore import removed (not used here)
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -31,7 +31,6 @@ private Long recordId;
 
 @ManyToOne(fetch = FetchType.LAZY)
 @JoinColumn(name = "vehicle_id")
-@JsonIgnore
 private Vehicle vehicle;
 
 

@@ -8,14 +8,33 @@ export default function RecordForm(){
   const [form, setForm] = useState({ vehicleId:'', requestId:'', serviceDate:'', description:'', totalCost:0, mechanicId:'' });
   const [vehicles, setVehicles] = useState([]);
   const [mechanics, setMechanics] = useState([]);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   useEffect(()=> { vehicleApi.list().then(setVehicles); mechanicApi.list().then(setMechanics); },[]);
 
   const submit = async (e) => {
     e.preventDefault();
-    await serviceRecordApi.create(form);
-    navigate('/service-records');
+    try {
+      setSaving(true);
+      // coerce types
+      const payload = {
+        vehicleId: Number(form.vehicleId),
+        mechanicId: form.mechanicId ? Number(form.mechanicId) : undefined,
+        requestId: form.requestId ? Number(form.requestId) : undefined,
+        serviceDate: form.serviceDate,
+        description: form.description,
+        totalCost: Number(form.totalCost) || 0
+      };
+
+      await serviceRecordApi.create(payload);
+      navigate('/service-records');
+    } catch (err) {
+      console.error('ServiceRecord create error:', err);
+      alert(err?.response?.data || err?.message || 'Failed to create record');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -42,7 +61,7 @@ export default function RecordForm(){
           <textarea className="border p-2 w-full" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} />
         </label>
         <div className="col-span-full">
-          <button className="px-4 py-2 bg-accent text-white rounded">Save</button>
+          <button type="submit" disabled={saving} className="px-4 py-2 bg-accent text-white rounded disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button>
         </div>
       </form>
     </div>

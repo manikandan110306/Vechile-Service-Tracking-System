@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 
 @Entity
@@ -32,7 +33,8 @@ private String availabilityStatus;
 
 
 @OneToMany(mappedBy = "mechanic", cascade = CascadeType.ALL)
-private List<ServiceRecord> assignedServices = new ArrayList<>();
+	@JsonIgnore
+	private List<ServiceRecord> assignedServices = new ArrayList<>();
 
 
 public Mechanic() {}

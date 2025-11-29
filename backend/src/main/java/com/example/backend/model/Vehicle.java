@@ -48,6 +48,7 @@ private User user;
 
 
 @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, orphanRemoval = true)
+@JsonIgnore
 private List<ServiceRecord> serviceRecords = new ArrayList<>();
 
 

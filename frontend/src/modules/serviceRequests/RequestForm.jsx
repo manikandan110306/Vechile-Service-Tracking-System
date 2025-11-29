@@ -17,10 +17,14 @@ export default function RequestForm({ edit }) {
   });
 
   const [vehicles, setVehicles] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   // --------------------- LOAD VEHICLES + EDIT DATA ---------------------
   useEffect(() => {
-    vehicleApi.list().then(setVehicles).catch(() => {});
+    vehicleApi
+      .list()
+      .then((data) => setVehicles(Array.isArray(data) ? data : data?.content || []))
+      .catch(() => setVehicles([]));
 
     if (edit && id) {
       serviceRequestApi.get(id).then((data) => {
@@ -58,6 +62,7 @@ export default function RequestForm({ edit }) {
     }
 
     try {
+      setSaving(true);
       if (edit) {
         await serviceRequestApi.update(id, payload);
       } else {
@@ -67,6 +72,8 @@ export default function RequestForm({ edit }) {
     } catch (err) {
       console.error("ERROR:", err.response?.data || err);
       alert("Failed to save request. Check console.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -89,7 +96,7 @@ export default function RequestForm({ edit }) {
             }
           >
             <option value="">Select Vehicle</option>
-            {vehicles.map((v) => (
+            {(vehicles || []).map((v) => (
               <option key={v.vehicleId} value={v.vehicleId}>
                 {v.vehicleNumber} - {v.brand}
               </option>
@@ -134,8 +141,8 @@ export default function RequestForm({ edit }) {
 
         {/* Save Button */}
         <div className="col-span-full flex gap-2">
-          <button className="px-4 py-2 bg-accent text-white rounded">
-            Save
+          <button type="submit" disabled={saving} className="px-4 py-2 bg-accent text-white rounded disabled:opacity-60">
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
 

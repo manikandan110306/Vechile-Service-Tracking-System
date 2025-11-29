@@ -1,8 +1,17 @@
-import axiosClient from './axiosClient';
-export default {
-  list: (p) => axiosClient.get('/mechanics', { params: p }),
-  get: (id) => axiosClient.get(`/mechanics/${id}`),
-  create: (d) => axiosClient.post('/mechanics', d),
-  update: (id,d) => axiosClient.put(`/mechanics/${id}`, d),
-  remove: (id) => axiosClient.delete(`/mechanics/${id}`)
+import axios from "axios";
+
+const BASE = "http://localhost:8080/api/mechanics";
+
+const mechanicApi = {
+  list: () => axios.get(BASE).then(r => r.data),
+
+  create: (data) => axios.post(BASE, data).then(r => r.data),
+
+  get: (id) => axios.get(`${BASE}/${id}`).then(r => r.data),
+
+  update: (id, data) => axios.put(`${BASE}/${id}`, data).then(r => r.data),
+
+  delete: (id) => axios.delete(`${BASE}/${id}`)   // ✅ use delete (NOT destroy)
 };
+
+export default mechanicApi;
