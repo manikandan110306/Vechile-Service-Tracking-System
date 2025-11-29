@@ -18,6 +18,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/users")
 @Validated
+@CrossOrigin(origins = "http://localhost:8081")
 public class UserController {
 private final UserService userService;
 private final PasswordEncoder passwordEncoder;
@@ -65,6 +66,29 @@ public ResponseEntity<?> get(@PathVariable Long id) {
 return userService.findById(id)
 .map(u -> { u.setPassword(null); return ResponseEntity.ok(u); })
 .orElse(ResponseEntity.notFound().build());
+}
+
+@PutMapping("/{id}")
+public ResponseEntity<?> update(
+        @PathVariable Long id,
+        @RequestBody User updatedUser) {
+
+    return userService.findById(id).map(existing -> {
+
+        existing.setName(updatedUser.getName());
+        existing.setPhone(updatedUser.getPhone());
+        existing.setRole(updatedUser.getRole());
+
+        // Update password only if new one is provided
+        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank()) {
+            existing.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+        }
+
+        User saved = userService.save(existing);
+        saved.setPassword(null);
+        return ResponseEntity.ok(saved);
+
+    }).orElse(ResponseEntity.notFound().build());
 }
 
 
